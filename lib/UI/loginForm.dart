@@ -5,6 +5,8 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:sign_button/sign_button.dart';
 
+enum FormType { LOGIN, SIGNUP }
+
 class LoginForm extends StatefulWidget {
   LoginForm({Key? key}) : super(key: key);
 
@@ -14,7 +16,18 @@ class LoginForm extends StatefulWidget {
 
 class _LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormBuilderState>();
+  String password_regex =
+      r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$';
+  bool is_password_visible = true;
+  bool is_password_match = false;
+  var pass_controller;
 
+  String button_text = 'Login';
+  String swith_text = 'Login';
+  var is_form = FormType.LOGIN;
+  var formWidget;
+
+  // NOTIFY USER IF LOGIN OF SIGNUP SUCCEFFULY :
   MyCustomDialog(context, message) async {
     CoolAlert.show(
         widget: Container(
@@ -63,8 +76,85 @@ class _LoginFormState extends State<LoginForm> {
     }
   }
 
+  ////////////////////////////////////////
+  ///  SIGNUP FORM :
+  /// 1. CHECK PASS 1 == PASS 2
+  /// 2. VALIDATE PASSWORD USING REGEX :
+  /////////////////////////////////////////
+  SubmitSignupForm() {
+    _formKey.currentState!.save();
+
+    if (_formKey.currentState!.validate()) {
+      String email = _formKey.currentState!.value['email'];
+      String password = _formKey.currentState!.value['password'];
+      // Test
+      print('user email $email');
+      print('user password $password');
+      _formKey.currentState?.reset();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Set Button Text according to form type :
+    if (is_form == FormType.LOGIN) {
+      button_text = 'Login';
+      swith_text = 'Signup';
+    } else {
+      button_text = 'Signup';
+      swith_text = 'Login';
+    }
+
+    // Create Form Widget
+    if (is_form == FormType.LOGIN) {
+      formWidget = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('Login',
+          style:TextStyle(
+            fontSize: 22, 
+            fontWeight:FontWeight.w600),), 
+          SizedBox(height: 20,), 
+          
+
+          // 1. EMAIL FIELD
+          Label('Email addresss'),
+          EmailInputField(context),
+          // 2. PASSWORD
+          Label('Password'),
+          PasswodInputField(
+            context,
+          ),
+          // 3.LOOGIN BUTTON:
+          LoginButton(SubmitLofinForm),
+        ],
+      );
+    } else {
+      formWidget = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Create Account',
+            style:TextStyle(
+              fontSize: 22,
+              fontWeight:FontWeight.w600 ),), 
+
+          SizedBox(height: 20,), 
+          // 1. EMAIL FIELD
+          Label('Email addresss'),
+          EmailInputField(context),
+
+          Label('Password'),
+          PasswordOne(context),
+          
+          Label('Confirm Password'),
+          PasswordTwo(),
+          
+          LoginButton(SubmitSignupForm),
+        ],
+      );
+    }
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.60,
       width: MediaQuery.of(context).size.width * 1,
@@ -77,24 +167,11 @@ class _LoginFormState extends State<LoginForm> {
               key: _formKey,
               autovalidateMode: AutovalidateMode.disabled,
               child: Container(
-                height: MediaQuery.of(context).size.height * 0.50,
-                width: MediaQuery.of(context).size.width * 0.70,
-                child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // 1. EMAIL FIELD
-                      Label('Email addresss'),
-                      EmailInputField(context),
+                  height: MediaQuery.of(context).size.height * 0.60,
+                  width: MediaQuery.of(context).size.width * 0.70,
+                  child: formWidget)),
 
-                      // 2. PASSWORD
-                      Label('Password'),
-                      PasswodInputField(
-                        context,
-                      ),
-                      // 3.LOOGIN BUTTON:
-                      LoginButton(SubmitLofinForm),
-                    ]),
-              )),
+          // SOCIAL AUTH BUTTON :
           Container(
               child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -114,16 +191,29 @@ class _LoginFormState extends State<LoginForm> {
   /// EXTERNAL METHODS :
 /////////////////////////////////////////
   // Login Button :
-  Container LoginButton(SubmitLofinForm) {
-    return Container(
-        width: 270,
-        height: 42,
-        margin: EdgeInsets.only(top: 20),
-        child: ElevatedButton(
+  Column LoginButton(SubmitLofinForm) {
+    return Column(
+      children: [
+        Container(
+            width: 270,
+            height: 42,
+            margin: EdgeInsets.only(top: 20),
+            child: ElevatedButton(
+                onPressed: () {
+                  SubmitLofinForm();
+                },
+                child: Text('$button_text'))),
+        TextButton(
             onPressed: () {
-              SubmitLofinForm();
+              setState(() {
+                is_form == FormType.LOGIN
+                    ? is_form = FormType.SIGNUP
+                    : is_form = FormType.LOGIN;
+              });
             },
-            child: Text('Login')));
+            child: Text('or  $swith_text'))
+      ],
+    );
   }
 
   // Take Password Input :
@@ -210,7 +300,103 @@ class _LoginFormState extends State<LoginForm> {
       alignment: Alignment.centerLeft,
       child: Text(title,
           style: TextStyle(
-              fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black)),
+              fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black)),
+    );
+  }
+
+///////////////////////////////
+// SIGNUP FIELD COMPONENT :
+//////////////////////////////
+
+// PASSWORD ONE FIELD :
+  FormBuilderTextField PasswordOne(BuildContext context) {
+    return FormBuilderTextField(
+      name: 'password',
+      onChanged: (val) {
+        pass_controller = val;
+      },
+      obscureText: is_password_visible,
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
+      keyboardType: TextInputType.emailAddress,
+
+      // Validate password
+      validator: FormBuilderValidators.compose([
+        FormBuilderValidators.minLength(context, 8,
+            errorText: 'invalid password'),
+        FormBuilderValidators.match(context, password_regex,
+            errorText: 'create strong passwod ex:Password@13')
+      ]),
+
+      decoration: InputDecoration(
+          hintText: 'enter password',
+          contentPadding: EdgeInsets.symmetric(vertical: 10),
+          hintStyle: TextStyle(
+            fontSize: 15,
+          ),
+          prefixIcon: Icon(
+            Icons.lock_rounded,
+            color: Colors.orange.shade300,
+            size: 18,
+          ),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: BorderSide(width: 1.5, color: Colors.teal.shade300)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: BorderSide(
+                width: 2,
+              )),
+          // errorText: 'invalid email address',
+          // constraints: BoxConstraints(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
+    );
+  }
+
+  // PASS SECOND FIELD
+  FormBuilderTextField PasswordTwo() {
+    return FormBuilderTextField(
+      name: 'confirmPassword',
+      obscureText: is_password_visible,
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
+      keyboardType: TextInputType.emailAddress,
+
+      // Validate password
+      validator: FormBuilderValidators.compose([
+        (val) {
+          if (val != pass_controller) {
+            return 'password not match';
+          }
+        }
+      ]),
+
+      decoration: InputDecoration(
+          hintText: 'confirm password',
+          contentPadding: EdgeInsets.symmetric(vertical: 10),
+          hintStyle: TextStyle(
+            fontSize: 15,
+          ),
+          prefixIcon: Icon(
+            Icons.remove_red_eye_rounded,
+            color: Colors.orange.shade300,
+            size: 18,
+          ),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: BorderSide(width: 1.5, color: Colors.teal.shade300)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: BorderSide(
+                width: 2,
+              )),
+          // errorText: 'invalid email address',
+          // constraints: BoxConstraints(),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
     );
   }
 }
